@@ -188,8 +188,9 @@ export default function KnockPrototype({ loaderData, actionData }: Route.Compone
             <li key={item.id} className="flex items-center justify-between gap-3 p-2">
               <div>
                 <code className="text-xs">{item.source.key}</code>{" "}
-                {/* Rendered as text on purpose: Knock's `rendered` HTML interpolates user-controlled names — sanitising it is a Feed-UI concern. */}
-                <span>{item.blocks[0] && "content" in item.blocks[0] ? item.blocks[0].content : ""}</span>
+                {/* `content` is the raw template; `rendered` is interpolated HTML containing
+                    user-controlled names. Shown as plain text: sanitising is a Feed-UI concern. */}
+                <span>{item.blocks[0] && "rendered" in item.blocks[0] ? htmlToText(item.blocks[0].rendered) : ""}</span>
                 <div className="text-xs text-muted-foreground">
                   seen {item.seen_at ? "✓" : "✗"} · read {item.read_at ? "✓" : "✗"} · {item.inserted_at}
                 </div>
@@ -236,6 +237,11 @@ export default function KnockPrototype({ loaderData, actionData }: Route.Compone
       <Dump title="Client log" value={log} />
     </div>
   );
+}
+
+function htmlToText(html: string) {
+  if (typeof DOMParser === "undefined") return "";
+  return new DOMParser().parseFromString(html, "text/html").body.textContent ?? "";
 }
 
 function Dump({ title, value }: { title: string; value: unknown }) {
