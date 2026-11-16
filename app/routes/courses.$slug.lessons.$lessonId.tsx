@@ -900,12 +900,33 @@ export async function action({ params, request }: Route.ActionArgs) {
         if (!parsed.success) {
           return { ok: false, error: "Enter a comment before posting." };
         }
-        createComment(
+        const created = createComment(
           currentUserId,
           lessonId,
           parsed.data.parentId ?? null,
           parsed.data.body
         );
+        // PROTOTYPE (Knock spike, issue #25): Discussion Reply → question author.
+        if (created.parentId !== null) {
+          const parent = getCommentById(created.parentId);
+          const findUser = (id: number) =>
+            db.select().from(users).where(eq(users.id, id)).get();
+          const replier = findUser(currentUserId);
+          const author = parent ? findUser(parent.userId) : undefined;
+          const lesson = getLessonById(lessonId);
+          if (replier && author) {
+            const { triggerDiscussionReply } = await import(
+              "~/lib/knock-prototype.server"
+            );
+            await triggerDiscussionReply({
+              replier,
+              questionAuthor: author,
+              lessonTitle: lesson?.title ?? "a lesson",
+              lessonUrl: `/courses/${slug}/lessons/${lessonId}`,
+              replyId: created.id,
+            }).catch((err) => console.error("[knock-prototype] trigger failed", err));
+          }
+        }
         return { ok: true };
       }
 
